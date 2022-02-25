@@ -477,7 +477,10 @@ static void getoptions(int argc, char *argv[]) {
 	Swig_mark_arg(i);
       } else if (strncmp(argv[i], "-D", 2) == 0) {
 	String *d = NewString(argv[i] + 2);
-	Replace(d, "=", " ", DOH_REPLACE_ANY | DOH_REPLACE_FIRST);
+	if (Replace(d, "=", " ", DOH_REPLACE_FIRST) == 0) {
+	  // Match C preprocessor behaviour whereby -DFOO sets FOO=1.
+	  Append(d, " 1");
+	}
 	Preprocessor_define((DOH *) d, 0);
 	Delete(d);
 	// Create a symbol
@@ -903,10 +906,6 @@ int SWIG_main(int argc, char *argv[], const TargetLanguageModule *tlm) {
 
   // Set the SWIG version value in format 0xAABBCC from package version expected to be in format A.B.C
   String *package_version = NewString(PACKAGE_VERSION); /* Note that the fakeversion has not been set at this point */
-  if (char *token = strstr(Char(package_version), "+")) {
-    // Remove '+' suffix
-    *token = '\0';
-  }
   char *token = strtok(Char(package_version), ".");
   String *vers = NewString("SWIG_VERSION 0x");
   int count = 0;

@@ -223,7 +223,6 @@ CPP_TEST_CASES += \
 	disown \
 	dynamic_cast \
 	empty \
-	enum_callback \
 	enum_ignore \
 	enum_plus \
 	enum_rename \
@@ -236,6 +235,7 @@ CPP_TEST_CASES += \
 	evil_diamond_ns \
 	evil_diamond_prop \
 	exception_classname \
+	exception_memory_leak \
 	exception_order \
 	extend \
 	extend_constructor_destructor \
@@ -694,6 +694,7 @@ C_TEST_CASES += \
 	c_delete \
 	c_delete_function \
 	char_constant \
+	command_line_define \
 	const_const \
 	constant_expr_c \
 	contract_c \
@@ -764,6 +765,7 @@ MULTI_CPP_TEST_CASES += \
 # Custom tests - tests with additional commandline options
 wallkw.cpptest: SWIGOPT += -Wallkw
 preproc_include.ctest: SWIGOPT += -includeall
+command_line_define.ctest: SWIGOPT += -DFOO
 
 # Allow modules to define temporarily failing tests.
 C_TEST_CASES := $(filter-out $(FAILING_C_TESTS),$(C_TEST_CASES))

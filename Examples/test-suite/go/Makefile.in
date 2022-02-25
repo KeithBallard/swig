@@ -181,6 +181,7 @@ clean:
 	rm -f mod_a.go mod_a.gox mod_b.go mod_b.gox
 	rm -f multi_import_a.go multi_import_a.gox
 	rm -f multi_import_b.go multi_import_b.gox
+	rm -f multi_import_d.go multi_import_d.gox
 	rm -f packageoption_a.go packageoption_a.gox
 	rm -f packageoption_b.go packageoption_b.gox
 	rm -f packageoption_c.go packageoption_c.gox

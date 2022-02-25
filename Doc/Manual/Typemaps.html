@@ -2455,6 +2455,14 @@ The result is the following expansion
 </pre>
 </div>
 
+<p>
+The first argument, the typemap method, can look up the keyword argument of a
+typemap by appending a colon and the keyowrd. For example,
+<tt>$typemap(directorin:descriptor, $type)</tt>  would be replaced by <tt>"D"</tt> if <tt>type</tt> is a <tt>double</tt>.
+</p>
+<p>
+<em>New in SWIG 4.1.</em>
+</p>
 
 <H3><a name="Typemaps_special_variable_attributes">14.4.5 Special variables and typemap attributes</a></H3>
 
@@ -3835,7 +3843,7 @@ To eliminate this, define a fragment that includes the common marshalling code:
 
 <p>
 When the "in" or "varin" typemaps for MyClass are required, the
-contents of the fragment called "AsMyClass" is added to the "header" section within the generated code, and then the
+contents of the fragment called "AsMyClass" are added to the "header" section within the generated code, and then the
 typemap code is emitted. Hence, the method <tt>AsMyClass</tt> will be
 generated into the wrapper code before any typemap code that calls it.
 </p>
@@ -3983,19 +3991,34 @@ inclusion of the other fragments.
 
 <li>
 <p>
-A typemap can also use more than one fragment, but since the
-syntax is different, you need to specify the dependent fragments in a comma separated
-list. Consider:
+A typemap can also use more than one fragment:
 </p>
-
 <div class="code">
 <pre>
-%typemap(in, fragment="frag1, frag2, frag3") {...}
+%typemap("in", fragment="frag1", fragment="frag2", fragment="frag3") {...}
 </pre>
 </div>
 
 <p>
-which is equivalent to:
+<b>Compatibility note: </b> The ability to use multiple
+<tt>fragment</tt> keys as shown above was introduced in SWIG-4.1.0.
+</p>
+
+<p>
+Multiple fragments can alternatively be specified as a comma
+separated list value in a single <tt>fragment</tt> key.
+Note that no whitespace is allowed within this comma separated list.
+The following is the equivalent to the above:
+</p>
+
+<div class="code">
+<pre>
+%typemap(in, fragment="frag1,frag2,frag3") {...}
+</pre>
+</div>
+
+<p>
+which in turn is functionally equivalent to:
 </p>
 
 <div class="code">

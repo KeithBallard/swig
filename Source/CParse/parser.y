@@ -1678,7 +1678,7 @@ static String *add_qualifier_to_declarator(SwigType *type, SwigType *qualifier) 
 %type <type>     type rawtype type_right anon_bitfield_type decltype ;
 %type <bases>    base_list inherit raw_inherit;
 %type <dtype>    definetype def_args etype default_delete deleted_definition explicit_default;
-%type <dtype>    expr exprnum exprsimple exprcompound valexpr exprmem;
+%type <dtype>    expr exprnum exprsimple exprcompound valexpr exprmem callparms callptail;
 %type <id>       ename ;
 %type <id>       less_valparms_greater;
 %type <str>      type_qualifier;
@@ -1863,7 +1863,7 @@ extend_directive : EXTEND options classkeyopt idcolon LBRACE {
 		 } else {
 		   /* Previous typedef class definition.  Use its symbol table.
 		      Deprecated, just the real name should be used. 
-		      Note that %extend before the class typedef never worked, only %extend after the class typdef. */
+		      Note that %extend before the class typedef never worked, only %extend after the class typedef. */
 		   prev_symtab = Swig_symbol_setscope(Getattr(cls, "symtab"));
 		   current_class = cls;
 		   SWIG_WARN_NODE_BEGIN(cls);
@@ -2014,7 +2014,7 @@ constant_directive :  CONSTANT identifier EQUAL definetype SEMI {
 		 $$ = 0;
 	       }
 	       | CONSTANT error END {
-		 Swig_error(cparse_file,cparse_line,"Missing ';' after %%constant.\n");
+		 Swig_error(cparse_file,cparse_line,"Missing semicolon (';') after %%constant.\n");
 		 SWIG_exit(EXIT_FAILURE);
 	       }
                ;
@@ -3134,13 +3134,22 @@ c_declaration   : c_decl {
 		    Setattr($$,"name",$2);
 		    appendChild($$,n);
 		    while (n) {
-		      if (!Equal(Getattr(n, "storage"), "typedef")) {
+		      String *s = Getattr(n, "storage");
+		      if (s) {
+			if (Strstr(s, "thread_local")) {
+			  Insert(s,0,"externc ");
+			} else if (!Equal(s, "typedef")) {
+			  Setattr(n,"storage","externc");
+			}
+		      } else {
 			Setattr(n,"storage","externc");
 		      }
 		      n = nextSibling(n);
 		    }
 		  } else {
-		     Swig_warning(WARN_PARSE_UNDEFINED_EXTERN,cparse_file, cparse_line,"Unrecognized extern type \"%s\".\n", $2);
+		    if (!Equal($2,"C++")) {
+		      Swig_warning(WARN_PARSE_UNDEFINED_EXTERN,cparse_file, cparse_line,"Unrecognized extern type \"%s\".\n", $2);
+		    }
 		    $$ = new_node("extern");
 		    Setattr($$,"name",$2);
 		    appendChild($$,firstChild($5));
@@ -3362,9 +3371,9 @@ c_decl_tail    : SEMI {
                | error {
 		   $$ = 0;
 		   if (yychar == RPAREN) {
-		       Swig_error(cparse_file, cparse_line, "Unexpected ')'.\n");
+		       Swig_error(cparse_file, cparse_line, "Unexpected closing parenthesis (')').\n");
 		   } else {
-		       Swig_error(cparse_file, cparse_line, "Syntax error - possibly a missing semicolon.\n");
+		       Swig_error(cparse_file, cparse_line, "Syntax error - possibly a missing semicolon (';').\n");
 		   }
 		   SWIG_exit(EXIT_FAILURE);
                }
@@ -4374,9 +4383,9 @@ cpp_template_decl : TEMPLATE LESSTHAN template_parms GREATERTHAN {
 
 		/* Function template explicit instantiation definition */
 		| TEMPLATE cpp_alternate_rettype idcolon LPAREN parms RPAREN {
-		  Swig_warning(WARN_PARSE_EXPLICIT_TEMPLATE, cparse_file, cparse_line, "Explicit template instantiation ignored.\n");
+			Swig_warning(WARN_PARSE_EXPLICIT_TEMPLATE, cparse_file, cparse_line, "Explicit template instantiation ignored.\n");
                   $$ = 0; 
-                }
+		}
 
 		/* Class template explicit instantiation declaration (extern template) */
 		| EXTERN TEMPLATE cpptype idcolon {
@@ -4389,7 +4398,7 @@ cpp_template_decl : TEMPLATE LESSTHAN template_parms GREATERTHAN {
 			Swig_warning(WARN_PARSE_EXTERN_TEMPLATE, cparse_file, cparse_line, "Extern template ignored.\n");
                   $$ = 0; 
 		}
-                ;
+		;
 
 cpp_template_possible:  c_decl {
 		  $$ = $1;
@@ -4477,7 +4486,6 @@ cpp_using_decl : USING idcolon SEMI {
                   $$ = new_node("using");
 		  Setattr($$,"uname",uname);
 		  Setattr($$,"name", name);
-		  Swig_symbol_add_using(name, uname, $$);
 		  Delete(uname);
 		  Delete(name);
 		  add_symbols($$);
@@ -4912,7 +4920,7 @@ cpp_conversion_operator : storage_class CONVERSIONOPERATOR type pointer LPAREN p
 		if ($7.val) {
 		  Setattr($$,"value",$7.val);
 		}
-		 Setattr($$,"refqualifier",$7.refqualifier);
+		Setattr($$,"refqualifier",$7.refqualifier);
 		Setattr($$,"decl",t);
 		Setattr($$,"parms",$5);
 		Setattr($$,"conversion_operator","1");
@@ -5034,7 +5042,7 @@ cpp_vend       : cpp_const SEMI {
                      $$.bitfield = 0;
                      $$.throws = $1.throws; 
                      $$.throwf = $1.throwf; 
-                     $$.nexcept = $1.nexcept; 
+                     $$.nexcept = $1.nexcept;
                      $$.final = $1.final;
                }
                | cpp_const LBRACE { 
@@ -5045,7 +5053,7 @@ cpp_vend       : cpp_const SEMI {
                      $$.bitfield = 0;
                      $$.throws = $1.throws; 
                      $$.throwf = $1.throwf; 
-                     $$.nexcept = $1.nexcept; 
+                     $$.nexcept = $1.nexcept;
                      $$.final = $1.final;
                }
                ;
@@ -5086,7 +5094,13 @@ extern_string :  EXTERN string {
 
 storage_class  : EXTERN { $$ = "extern"; }
 	       | extern_string { $$ = $1; }
-	       | extern_string THREAD_LOCAL { $$ = "thread_local"; }
+	       | extern_string THREAD_LOCAL {
+                if (Equal($1, "extern")) {
+                  $$ = "extern thread_local";
+                } else {
+                  $$ = "externc thread_local";
+                }
+	       }
 	       | extern_string TYPEDEF { $$ = "typedef"; }
                | STATIC { $$ = "static"; }
                | TYPEDEF { $$ = "typedef"; }
@@ -5253,6 +5267,20 @@ valparm        : parm {
 		  Setattr($$,"value",$1.val);
                }
                ;
+
+callparms      : valexpr callptail {
+		 $$ = $1;
+		 Printf($$.val, "%s", $2);
+	       }
+	       | empty { $$.val = NewStringEmpty(); }
+	       ;
+
+callptail      : COMMA valexpr callptail {
+		 $$.val = NewStringf(",%s%s", $2, $3);
+		 $$.type = 0;
+	       }
+	       | empty { $$.val = NewStringEmpty(); }
+	       ;
 
 def_args       : EQUAL definetype { 
                   $$ = $2; 
@@ -6411,7 +6439,7 @@ constant_directives : constant_directive
 optional_ignored_defines
 		: constant_directives
 		| empty
-		           ;
+		;
 
 /* Enum lists - any #define macros (constant directives) within the enum list are ignored. Trailing commas accepted. */
 
@@ -6422,13 +6450,13 @@ optional_ignored_defines
 
 enumlist	: enumlist_item {
 		  Setattr($1,"_last",$1);
-		 $$ = $1;
-	       }
+		  $$ = $1;
+		}
 		| enumlist_item DOXYGENPOSTSTRING {
 		  Setattr($1,"_last",$1);
 		  set_comment($1, $2);
-		 $$ = $1;
-	       }
+		  $$ = $1;
+		}
 		| enumlist_item COMMA enumlist {
 		  if ($3) {
 		    set_nextSibling($1, $3);
@@ -6436,7 +6464,7 @@ enumlist	: enumlist_item {
 		    Setattr($3,"_last",NULL);
 		  } else {
 		    Setattr($1,"_last",$1);
-		}
+		  }
 		  $$ = $1;
 		}
 		| enumlist_item COMMA DOXYGENPOSTSTRING enumlist {
@@ -6446,7 +6474,7 @@ enumlist	: enumlist_item {
 		    Setattr($4,"_last",NULL);
 		  } else {
 		    Setattr($1,"_last",$1);
-	       }
+		  }
 		  set_comment($1, $3);
 		  $$ = $1;
 		}
@@ -6467,7 +6495,7 @@ edecl_with_dox	: edecl {
 		  $$ = $2;
 		  set_comment($2, $1);
 		}
-	       ;
+		;
 
 edecl          :  identifier {
 		   SwigType *type = NewSwigType(T_INT);
@@ -6529,17 +6557,33 @@ exprmem        : ID ARROW ID {
 		 $$.val = NewStringf("%s->%s", $1, $3);
 		 $$.type = 0;
 	       }
+	       | ID ARROW ID LPAREN callparms RPAREN {
+		 $$.val = NewStringf("%s->%s(%s)", $1, $3, $5);
+		 $$.type = 0;
+	       }
 	       | exprmem ARROW ID {
 		 $$ = $1;
 		 Printf($$.val, "->%s", $3);
+	       }
+	       | exprmem ARROW ID LPAREN callparms RPAREN {
+		 $$ = $1;
+		 Printf($$.val, "->%s(%s)", $3, $5);
 	       }
 	       | ID PERIOD ID {
 		 $$.val = NewStringf("%s.%s", $1, $3);
 		 $$.type = 0;
 	       }
+	       | ID PERIOD ID LPAREN callparms RPAREN {
+		 $$.val = NewStringf("%s.%s(%s)", $1, $3, $5);
+		 $$.type = 0;
+	       }
 	       | exprmem PERIOD ID {
 		 $$ = $1;
 		 Printf($$.val, ".%s", $3);
+	       }
+	       | exprmem PERIOD ID LPAREN callparms RPAREN {
+		 $$ = $1;
+		 Printf($$.val, ".%s(%s)", $3, $5);
 	       }
 	       ;
 
@@ -6582,7 +6626,7 @@ exprsimple     : exprnum {
 	       | SIZEOF exprsimple {
 		  $$.val = NewStringf("sizeof(%s)", $2.val);
 		  $$.type = T_ULONG;
-               }
+	       }
 	       | wstring {
 		    $$.val = $1;
 		    $$.rawval = NewStringf("L\"%s\"", $$.val);
@@ -6700,7 +6744,7 @@ valexpr        : exprsimple { $$ = $1; }
 		 $$ = $2;
                  $$.val = NewStringf("*%s",$2.val);
 	       }
-               ;
+	       ;
 
 exprnum        :  NUM_INT { $$ = $1; }
                |  NUM_FLOAT { $$ = $1; }

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
 import sys
 import os
 chs = open("chapters").readlines()
 
 f = open("Contents.html","w")
-f.write("""
+print >>f, """
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <HTML>
 <HEAD>
@@ -18,8 +17,7 @@ f.write("""
 <H1><a name="Contents"></a>SWIG Users Manual</H1>
 
 <p>
-
-""")
+"""
 
 f.close()
 
@@ -27,16 +25,15 @@ num = 1
 
 for c in chs:
     c = c.strip()
-    print("Processing " + c)
+    print "Processing %s" % c
     if c:
         os.system("python makechap.py %s %d >> Contents.html" % (c,num))
     num += 1
-
+    
 f = open("Contents.html","a")
-f.write("""
+print >>f, """
 </BODY>
 </HTML>
-
-""")
+"""
 
 
