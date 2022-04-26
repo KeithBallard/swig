@@ -102,3 +102,88 @@ end subroutine}
   %typemap(fargout, noblock=1) const CPPTYPE& {};
 %enddef
 
+/* -------------------------------------------------------------------------
+ * Additional macros for 2D arrays
+/* -------------------------------------------------------------------------
+/*!
+ * \def %fortran_2d_array
+ *
+ * Use the \c Swig2DArrayWrapper for the ISO C binding layer.
+ *
+ * Based on fortran_array macro.
+ */
+%define %fortran_2d_array(CPPTYPE...)
+  // C wrapper type: pointer to templated array wrapper
+  %typemap(ctype, in="Swig2DArrayWrapper*",
+         null="Swig2DArrayWrapper_uninitialized()",
+         fragment="Swig2DArrayWrapper_uninitialized", noblock=1) CPPTYPE
+    "Swig2DArrayWrapper"
+  
+  // Interface type: fortran equivalent of "ctype"
+  // Since the type is declared in the module, it's necessary to use the
+  // fortran "import" statement to bring it into scope.
+  %typemap(imtype, fragment="Swig2DArrayWrapper_f", noblock=1) CPPTYPE
+    "type(Swig2DArrayWrapper)"
+%enddef
+
+/* ------------------------------------------------------------------------- */
+/*!
+ * \def %fortran_2d_array_pointer
+ *
+ * Wrap intermediate data values as array pointers.
+ *
+ * This defines:
+ * - C type interface
+ * - IM type interface
+ * - FIN/FOUT
+ * - FTYPE array pointer
+ */
+%define %fortran_2d_array_pointer(VTYPE, CPPTYPE...)
+  %fortran_2d_array(CPPTYPE)
+
+  // Fortran proxy code: input is target 2D array
+  %typemap(ftype, in="$typemap(imtype, " #VTYPE "), dimension(:,:), target", noblock=1) CPPTYPE {
+    $typemap(imtype, VTYPE), dimension(:,:), pointer
+  }
+  
+  // Look up typemaps defined by %fortran_intrinsic
+  %typemap(fin, noblock=1) CPPTYPE {$typemap(fin, VTYPE ARRAY[][])}
+  %typemap(fout, noblock=1) CPPTYPE {$typemap(fout, VTYPE ARRAY[][])}
+%enddef
+
+/* ------------------------------------------------------------------------- */
+/*!
+ * \def %fortran_2d_array_handle
+ *
+ * Convert a C++ input argument to an array pointer.
+ *
+ * For example, the function
+ * \code
+   void f(double** data, size_t* rows, size_t* cols);
+   \endcode
+ * would take a Fortran array pointer as an (INOUT) argument.
+ *
+ * This defines:
+ * - C type interface
+ * - IM type interface
+ * - FIN
+ * - FTYPE array pointer
+ *
+ * which means you still must define the C++ <--> C conversions elsewhere.
+ * Make sure to add the `match="in"` keyword to the `argout` typemap.
+ */
+%define %fortran_2d_array_handle(VTYPE, CPPTYPE...)
+
+  // Input arguments for pointer-by-ref are the same
+  %typemap(ftype, in="$typemap(imtype, " #VTYPE "), dimension(:,:), pointer, intent(inout)", noblock=1) CPPTYPE& {
+    $typemap(imtype, VTYPE), dimension(:,:), pointer
+  }
+  %typemap(fin, match="ftype", noblock=1) CPPTYPE& {$typemap(fin, VTYPE ARRAY[][])}
+  %typemap(imtype) CPPTYPE& = CPPTYPE;
+  %typemap(ctype) CPPTYPE& = CPPTYPE;
+
+  // Update the resulting Fortran pointer, but only by reference (not const ref)
+  %typemap(fargout, match="fin", noblock=1) CPPTYPE& = VTYPE ARRAY[][];
+  %typemap(fargout, noblock=1) const CPPTYPE& {};
+%enddef
+

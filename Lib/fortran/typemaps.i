@@ -31,6 +31,34 @@ $2 = $input->size;
 }
 
 /* -------------------------------------------------------------------------
+ * Enable seamless translation of consecutive pointer/size1/size2 arguments
+ * to Fortran 2D array views.
+ *
+ * To apply these to a function `void foo(double* x, int x_rows, int x_cols);`:
+ *
+ * %apply (SWIGTYPE *DATA, size_t ROWS, size_t COLS) { (double *x, int x_rows, int x_cols) };
+ */
+
+
+/* Transform the two-argument typemap into an array pointer */
+%fortran_2d_array_pointer($*1_ltype, %arg((SWIGTYPE *DATA, size_t ROWS, size_t COLS)))
+
+/* Transform (Swig2DArrayWrapper *$input) -> (SWIGTYPE *DATA, size_t ROWS, size_t COLS) */
+%typemap(in, noblock=1) (SWIGTYPE *DATA, size_t ROWS, size_t COLS) {
+$1 = ($1_ltype)$input->data;
+$2 = $input->rows;
+$3 = $input->cols;
+}
+
+/* Apply the typemaps to const versions as well */
+%apply (SWIGTYPE *DATA, size_t ROWS, size_t COLS) { (const SWIGTYPE *DATA, size_t ROWS, size_t COLS) };
+
+/* Add 'intent(in)' for const arrays */
+%typemap(ftype, in="$typemap(imtype, $*1_ltype), dimension(:,:), intent(in), target", noblock=1) (const SWIGTYPE *DATA, size_t ROWS, size_t COLS) {
+  $typemap(imtype, $*1_ltype), dimension(:,:), pointer
+}
+
+/* -------------------------------------------------------------------------
  * Interact natively with Fortran fixed-size arrays.
  *
  * To apply these to a function `void foo(const int x[4]);`:

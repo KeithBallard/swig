@@ -36,6 +36,9 @@ subroutine %fortrantm(fout, bool)(imout, fout)
 end subroutine
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Structure to hold a reference to a 1D array
+
 #ifdef __cplusplus
 %fragment("SwigArrayWrapper", "header", fragment="<stdlib.h>") %{
 struct SwigArrayWrapper {
@@ -66,6 +69,45 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
 { type, bind(C) :: SwigArrayWrapper
   type(C_PTR), public :: data = C_NULL_PTR
   integer(C_SIZE_T), public :: size = 0
+ end type}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Structure to hold a reference to a 2D array in contiguous memory
+
+#ifdef __cplusplus
+%fragment("Swig2DArrayWrapper", "header", fragment="<stdlib.h>") %{
+struct Swig2DArrayWrapper {
+    void* data;
+    size_t rows;
+    size_t cols;
+};
+%}
+#else
+%fragment("Swig2DArrayWrapper", "header", fragment="<stdlib.h>") %{
+typedef struct {
+    void* data;
+    size_t rows;
+    size_t cols;
+} Swig2DArrayWrapper;
+%}
+#endif
+
+%fragment("Swig2DArrayWrapper_uninitialized", "header", fragment="Swig2DArrayWrapper") %{
+SWIGINTERN Swig2DArrayWrapper Swig2DArrayWrapper_uninitialized() {
+  Swig2DArrayWrapper result;
+  result.data = NULL;
+  result.rows = 0;
+  result.cols = 0;
+  return result;
+}
+%}
+
+// Add 2D array wrapper to Fortran types when used
+%fragment("Swig2DArrayWrapper_f", "fdecl", noblock=1)
+{ type, bind(C) :: Swig2DArrayWrapper
+  type(C_PTR), public :: data = C_NULL_PTR
+  integer(C_SIZE_T), public :: rows = 0
+  integer(C_SIZE_T), public :: cols = 0
  end type}
 
 
@@ -155,6 +197,9 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
 
   %typemap(bindc) CTYPE* = FORTRAN_INTRINSIC_TYPE*;
 
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  // 1D Arrays 
+
   // Fragment for converting array to array wrapper. This needs the intermediate step of assigning the first element to an array pointer to be compatible with
   // ISO C.
   %fragment("SWIG_fin"{CTYPE[]}, "fsubprograms", fragment="SwigArrayWrapper_f", noblock=1)
@@ -195,6 +240,54 @@ end subroutine}
   call %fortrantm(fout, CTYPE[])($1, $input)
   }
   %typemap(fargout) CTYPE const ARRAY[] = CTYPE ARRAY[];
+
+  ////////////////////////////////////////////////////////////////////////////////////////////////
+  // 2D Arrays 
+
+  // Fragment for converting a 2D array to a 2D array wrapper. This needs the intermediate step of assigning the first element to an array pointer to be compatible with
+  // ISO C.
+  %fragment("SWIG_fin"{CTYPE[][]}, "fsubprograms", fragment="Swig2DArrayWrapper_f", noblock=1)
+{subroutine %fortrantm(fin, CTYPE[][])(finp, iminp)
+  use, intrinsic :: ISO_C_BINDING
+  FTYPE(FKIND), dimension(:,:), intent(in), target :: finp
+  type(Swig2DArrayWrapper), intent(out) :: iminp
+  integer(C_SIZE_T) :: sz
+  FTYPE(FKIND), pointer :: imtemp
+
+  sz = size(finp, kind=C_SIZE_T)
+  if (sz > 0_c_size_t) then
+    imtemp => finp(1,1)
+    iminp%data = c_loc(imtemp)
+    iminp%rows = size(finp, 1, kind=C_SIZE_T)
+    iminp%cols = size(finp, 2, kind=C_SIZE_T)
+  else
+    iminp%data = c_null_ptr
+    iminp%rows = 0
+    iminp%cols = 0
+  end if
+end subroutine}
+
+  // Fragment for converting 2D array wrapper to a Fortran 2D array
+  %fragment("SWIG_fout"{CTYPE[][]}, "fsubprograms", noblock=1)
+  {subroutine %fortrantm(fout, CTYPE[][])(imout, fout)
+  use, intrinsic :: ISO_C_BINDING
+  type(Swig2DArrayWrapper), intent(in) :: imout
+  FTYPE(FKIND), dimension(:,:), pointer, intent(out) :: fout
+
+  if (imout%size > 0) then
+    call c_f_pointer(imout%data, fout, [imout%rows, imout%cols])
+  else
+    fout => NULL()
+  endif
+end subroutine}
+
+  // Define proxy code typemaps for a 2D array of this type
+  %fortran_typemap_finout(CTYPE[][], CTYPE ARRAY[][])
+  %typemap(fargout, fragment="SWIG_fout"{CTYPE[][]}, noblock=1) CTYPE ARRAY[][] {
+  call %fortrantm(fout, CTYPE[][])($1, $input)
+  }
+  %typemap(fargout) CTYPE const ARRAY[][] = CTYPE ARRAY[][];
+
 %enddef
 
 /*!
