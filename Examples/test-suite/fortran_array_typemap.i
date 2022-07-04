@@ -101,3 +101,34 @@ void average_points(int count, const double points[][3], double avg[3]) {
 }
 %}
 
+/* Test dynamic 2D arrays with combination pointer/rows/cols arguments */
+
+%apply(SWIGTYPE *DATA, size_t ROWS, size_t COLS) { (int* const data, const uint64_t rows, const uint64_t cols) };
+%apply(SWIGTYPE *DATA, size_t ROWS, size_t COLS) { (double* const data, const uint64_t rows, const uint64_t cols) };
+%apply(const SWIGTYPE *DATA, size_t ROWS, size_t COLS) { (const int* const data, const uint64_t rows, const uint64_t cols) };
+
+%inline %{
+void set_values_int(int* data, const uint64_t rows, const uint64_t cols, int value) {
+  int* end = data + rows * cols;
+  for (int* v = data; v != end; ++v) {
+    *v = value;
+  }
+}
+
+void set_values_dbl(double* data, const uint64_t rows, const uint64_t cols, double value) {
+  double* end = data + rows * cols;
+  for (double* v = data; v != end; ++v) {
+    *v = value;
+  }
+}
+
+int accum(const int* data, const uint64_t rows, const uint64_t cols) {
+  int result = 0;
+  int* end = data + rows * cols;
+  for (const int* v = data; v != end; ++v) {
+    result += *v;
+  }
+  return result;
+}
+
+%}

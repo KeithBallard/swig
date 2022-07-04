@@ -86,4 +86,25 @@ subroutine test_deferred_2d
 
 end subroutine
 
+! Test three-argument (pointer, rows, cols) -> dynamic 2D array
+subroutine test_2d_dynamic_array
+  use fortran_array_typemap
+  use ISO_C_BINDING
+  implicit none
+  integer(C_INT), dimension(:,:), allocatable :: int_dynamic_matrix
+  real(C_DOUBLE), dimension(:,:), allocatable :: dbl_dynamic_matrix
+
+  allocate(int_dynamic_matrix(6, 3))
+  allocate(dbl_dynamic_matrix(4, 4))
+
+  call set_values_int(int_dynamic_matrix, 2)
+  call set_values_dbl(dbl_dynamic_matrix, 4.25d0)
+
+  ASSERT(all(dbl_dynamic_matrix == 4.25d0))
+  ASSERT(all(int_dynamic_matrix == 2))
+
+  int_dynamic_matrix(:,:) = 3
+  ASSERT(accum(int_dynamic_matrix) == 3 * 6 * 3)
+end subroutine
+
 end program
