@@ -36,8 +36,7 @@ subroutine %fortrantm(fout, bool)(imout, fout)
 end subroutine
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Structure to hold a reference to a 1D array
+/* Structure to hold a reference to a 1D array */
 
 #ifdef __cplusplus
 %fragment("SwigArrayWrapper", "header", fragment="<stdlib.h>") %{
@@ -71,8 +70,7 @@ SWIGINTERN SwigArrayWrapper SwigArrayWrapper_uninitialized() {
   integer(C_SIZE_T), public :: size = 0
  end type}
 
-//////////////////////////////////////////////////////////////////////////////////////////////////
-// Structure to hold a reference to a 2D array in contiguous memory
+/* Structure to hold a reference to a 2D array in contiguous memory */
 
 #ifdef __cplusplus
 %fragment("Swig2DArrayWrapper", "header", fragment="<stdlib.h>") %{
